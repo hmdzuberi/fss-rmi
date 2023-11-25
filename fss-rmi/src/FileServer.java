@@ -50,9 +50,9 @@ public class FileServer implements IFileServer {
     public synchronized void shutdown() {
         try {
             registry.unbind("file-server");
-            boolean shutdown = false;
-            while (!shutdown) {
-                shutdown = UnicastRemoteObject.unexportObject(this, true);
+            boolean isShutdown = false;
+            while (!isShutdown) {
+                isShutdown = UnicastRemoteObject.unexportObject(this, true);
             }
         } catch (RemoteException | NotBoundException e) {
             System.err.println("Exception unbinding Remote Object: " + e.getMessage());
