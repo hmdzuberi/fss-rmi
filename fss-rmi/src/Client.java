@@ -15,7 +15,7 @@ public class Client {
     public static final String CMD_RMDIR = "rmdir";
     public static final String CMD_RM = "rm";
 
-    private static IFileServer fileServer;
+    private static FileServer fileServer;
 
     public static void main(String[] args) {
         String command = args[0];
@@ -27,7 +27,7 @@ public class Client {
             int port = Integer.parseInt(serverLocation[1]);
 
             Registry registry = LocateRegistry.getRegistry(host, port);
-            fileServer = (IFileServer) registry.lookup("file-server");
+            fileServer = (FileServer) registry.lookup("file-server");
 
             switch (command) {
                 case CMD_UPLOAD -> upload(commandArgs[0], commandArgs[1]);

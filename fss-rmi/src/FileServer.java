@@ -1,61 +1,15 @@
 import java.io.File;
-import java.rmi.NotBoundException;
+import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
 
-public class FileServer implements IFileServer {
+public interface FileServer extends Remote {
 
-    private static Registry registry = null;
+    public File download(String path) throws RemoteException;
+    public void upload(File file, String path) throws RemoteException;
+    public boolean deleteFile(String path) throws RemoteException;
+    public String[] listContents(String path) throws RemoteException;
+    public boolean createDirectory(String path) throws RemoteException;
+    public boolean deleteDirectory(String path) throws RemoteException;
+    public void shutdown() throws RemoteException;
 
-    public FileServer(Registry registry) throws RemoteException {
-        FileServer.registry = registry;
-    }
-
-    @Override
-    public File download(String path) {
-        return null;
-    }
-
-    @Override
-    public void upload(File file, String path) {
-
-    }
-
-    @Override
-    public boolean deleteFile(String path) {
-        File file = new File(path);
-        return file.delete();
-    }
-
-    @Override
-    public String[] listContents(String path) {
-        File directory = new File(path);
-        return directory.list();
-    }
-
-    @Override
-    public boolean createDirectory(String path) {
-        File directory = new File(path);
-        return directory.mkdir();
-    }
-
-    @Override
-    public boolean deleteDirectory(String path) {
-        File directory = new File(path);
-        return directory.delete();
-    }
-
-    @Override
-    public synchronized void shutdown() {
-        try {
-            registry.unbind("file-server");
-            boolean isShutdown = false;
-            while (!isShutdown) {
-                isShutdown = UnicastRemoteObject.unexportObject(this, true);
-            }
-        } catch (RemoteException | NotBoundException e) {
-            System.err.println("Exception unbinding Remote Object: " + e.getMessage());
-        }
-    }
 }

@@ -13,8 +13,8 @@ public class Server {
             System.out.println("Starting server");
             try {
                 Registry registry = LocateRegistry.createRegistry(serverPort);
-                IFileServer fileServer = new FileServer(registry);
-                IFileServer stub = (IFileServer) UnicastRemoteObject.exportObject(fileServer, 0);
+                FileServer fileServer = new RemoteFileServer(registry);
+                FileServer stub = (FileServer) UnicastRemoteObject.exportObject(fileServer, 0);
                 registry.rebind("file-server", stub);
             } catch (Exception e) {
                 System.err.println("Error initializing server: " + e.getMessage());
