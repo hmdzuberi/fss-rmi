@@ -76,18 +76,15 @@ public class Client {
                 sb.append(String.format("%d. %s\n", i + 1, contents[i]));
             }
             System.out.println(sb);
-        } else {
-            System.out.println("There are no files in this directory");
         }
-
     }
 
     private static void deleteFile(String path) throws RemoteException {
         boolean success = fileServer.deleteFile(path);
         if (success) {
-            System.out.println("Directory deleted");
+            System.out.println("File deleted");
         } else {
-            System.err.println("Directory could not be deleted");
+            System.err.println("File could not be deleted");
         }
 
     }
