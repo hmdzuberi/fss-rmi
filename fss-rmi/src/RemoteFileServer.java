@@ -1,19 +1,13 @@
 import java.io.*;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
-import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 public class RemoteFileServer implements FileServer {
+    private final Map<String, FileOutputStream> fileOutputStreamMap = new HashMap<>();
 
-    private static Registry registry = null;
-    private Map<String, FileOutputStream> fileOutputStreamMap = new HashMap<>();
-
-    public RemoteFileServer(Registry registry) throws RemoteException {
-        RemoteFileServer.registry = registry;
+    public RemoteFileServer() throws RemoteException {
     }
 
     @Override
@@ -38,10 +32,11 @@ public class RemoteFileServer implements FileServer {
     }
 
     @Override
-    public void startFileUpload(String path, long fileSize) throws RemoteException {
+    public void startFileUpload(String path, long fileSize, boolean isResume) throws RemoteException {
         try {
             File file = new File(path);
-            FileOutputStream fos = new FileOutputStream(file);
+            FileOutputStream fos;
+            fos = isResume ? new FileOutputStream(file, true) : new FileOutputStream(file);
             fileOutputStreamMap.put(path, fos);
         } catch (IOException e) {
             throw new RemoteException("Error opening file for writing", e);
@@ -56,16 +51,19 @@ public class RemoteFileServer implements FileServer {
         }
         try {
             fos.write(chunk, 0, length);
+            fos.flush();
         } catch (IOException e) {
             throw new RemoteException("Error writing file chunk", e);
         }
     }
+
 
     @Override
     public void completeFileUpload(String path) throws RemoteException {
         try {
             FileOutputStream fos = fileOutputStreamMap.remove(path);
             if (fos != null) {
+                fos.flush();
                 fos.close();
             }
         } catch (IOException e) {
@@ -98,15 +96,7 @@ public class RemoteFileServer implements FileServer {
     }
 
     @Override
-    public synchronized void shutdown() {
-        try {
-            registry.unbind("file-server");
-            boolean isShutdown = false;
-            while (!isShutdown) {
-                isShutdown = UnicastRemoteObject.unexportObject(this, true);
-            }
-        } catch (RemoteException | NotBoundException e) {
-            System.err.println("Exception unbinding Remote Object: " + e.getMessage());
-        }
+    public void shutdown() {
+        Server.setShutdown(true);
     }
 }

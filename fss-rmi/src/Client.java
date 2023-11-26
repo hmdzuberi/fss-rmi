@@ -31,8 +31,8 @@ public class Client {
             fileServer = (FileServer) registry.lookup("file-server");
 
             switch (command) {
-                case CMD_UPLOAD -> upload(commandArgs[0], commandArgs[1]);
-                case CMD_DOWNLOAD -> download(commandArgs[0], commandArgs[1]);
+                case CMD_UPLOAD -> uploadFile(commandArgs[0], commandArgs[1]);
+                case CMD_DOWNLOAD -> downloadFile(commandArgs[0], commandArgs[1]);
                 case CMD_RM -> deleteFile(commandArgs[0]);
                 case CMD_DIR -> listContents(commandArgs[0]);
                 case CMD_MKDIR -> createDirectory(commandArgs[0]);
@@ -90,16 +90,19 @@ public class Client {
 
     }
 
-    private static void download(String sourcePath, String destinationPath) throws RemoteException {
+    private static void downloadFile(String sourcePath, String destinationPath) throws RemoteException {
+        File file = new File(destinationPath);
         long fileSize = fileServer.getFileSize(sourcePath);
-        int chunkSize = (int) Math.floorDiv(fileSize, 10);
-        try (FileOutputStream fileOutputStream = new FileOutputStream(destinationPath)) {
-            long position = 0;
+        long fileSizeOnClient = file.length();
+        boolean isResume = fileSizeOnClient != 0 && fileSizeOnClient < fileSize;
+        int chunkSize = getChunkSize(fileSize);
+        try (FileOutputStream outputStream = isResume ? new FileOutputStream(file, true) : new FileOutputStream(file)) {
+            long position = isResume ? fileSizeOnClient : 0;
             while (position < fileSize) {
                 byte[] chunk = fileServer.getFileChunk(sourcePath, position, chunkSize);
-                fileOutputStream.write(chunk);
+                outputStream.write(chunk);
                 position += chunk.length;
-                printPercentageAndWait((float) position, fileSize);
+                printPercentageAndWait(position, fileSize);
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -107,38 +110,33 @@ public class Client {
         System.out.println("\nFile download completed");
     }
 
-    private static void printPercentageAndWait(float completed, long total) {
-        int percentage = (int) (completed / total * 100);
-        if (percentage > 100) {
-            percentage = 100;
-        }
-        System.out.print("\rIn Progress: " + percentage + "%");
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException ignored) {
-        }
-    }
-
-    private static void upload(String sourcePath, String destinationPath) throws RemoteException {
+    private static void uploadFile(String sourcePath, String destinationPath) throws RemoteException {
         File file = new File(sourcePath);
         if (!file.exists()) {
             System.err.println("File/Directory doesn't exist");
             return;
         }
-        fileServer.startFileUpload(destinationPath, file.length());
-        int chunkSize = (int) Math.floorDiv(file.length(), 10);
-        try (FileInputStream fileInputStream = new FileInputStream(file)) {
+        long fileSize = file.length();
+        long fileSizeOnServer = fileServer.getFileSize(destinationPath);
+        boolean isResume = fileSizeOnServer != 0 && fileSizeOnServer < fileSize;
+        fileServer.startFileUpload(destinationPath, fileSize, isResume);
+        int chunkSize = getChunkSize(fileSize);
+        try (FileInputStream inputStream = new FileInputStream(file)) {
+            if (isResume) {
+                inputStream.skip(fileSizeOnServer);
+            }
             byte[] buffer = new byte[chunkSize];
             int bytesRead;
-            int totalBytesRead = 0;
-            while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+            int totalBytesRead = isResume ? (int) fileSizeOnServer : 0;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
                 fileServer.uploadFileChunk(sourcePath, buffer, bytesRead);
                 totalBytesRead += bytesRead;
-                printPercentageAndWait(totalBytesRead, file.length());
+                printPercentageAndWait(totalBytesRead, fileSize);
             }
-            fileServer.completeFileUpload(file.getName());
         } catch (IOException e) {
             throw new RuntimeException(e);
+        } finally {
+            fileServer.completeFileUpload(destinationPath);
         }
         System.out.println("\nFile upload completed");
     }
@@ -150,6 +148,23 @@ public class Client {
         }
         //System.out.println(SERVER_KEY + ": " + envVar);
         return envVar.split(":");
+    }
+
+    private static int getChunkSize(long fileSize) {
+        int chunkSize = (int) Math.floorDiv(fileSize, 10);
+        return chunkSize != 0 ? chunkSize : 1;
+    }
+
+    private static void printPercentageAndWait(float completed, float total) {
+        int percentage = (int) (completed / total * 100);
+        if (percentage > 100) {
+            percentage = 100;
+        }
+        System.out.print("\rIn Progress: " + percentage + "%");
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException ignored) {
+        }
     }
 
 }
