@@ -1,3 +1,4 @@
+import java.io.*;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -89,12 +90,57 @@ public class Client {
 
     }
 
-    private static void download(String commandArg, String commandArg1) {
-
+    private static void download(String sourcePath, String destinationPath) throws RemoteException {
+        long fileSize = fileServer.getFileSize(sourcePath);
+        int chunkSize = (int) Math.floorDiv(fileSize, 10);
+        try (FileOutputStream fileOutputStream = new FileOutputStream(destinationPath)) {
+            long position = 0;
+            while (position < fileSize) {
+                byte[] chunk = fileServer.getFileChunk(sourcePath, position, chunkSize);
+                fileOutputStream.write(chunk);
+                position += chunk.length;
+                printPercentageAndWait((float) position, fileSize);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println("\nFile download completed");
     }
 
-    private static void upload(String commandArg, String commandArg1) {
+    private static void printPercentageAndWait(float completed, long total) {
+        int percentage = (int) (completed / total * 100);
+        if (percentage > 100) {
+            percentage = 100;
+        }
+        System.out.print("\rIn Progress: " + percentage + "%");
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException ignored) {
+        }
+    }
 
+    private static void upload(String sourcePath, String destinationPath) throws RemoteException {
+        File file = new File(sourcePath);
+        if (!file.exists()) {
+            System.err.println("File/Directory doesn't exist");
+            return;
+        }
+        fileServer.startFileUpload(destinationPath, file.length());
+        int chunkSize = (int) Math.floorDiv(file.length(), 10);
+        try (FileInputStream fileInputStream = new FileInputStream(file)) {
+            byte[] buffer = new byte[chunkSize];
+            int bytesRead;
+            int totalBytesRead = 0;
+            while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+                fileServer.uploadFileChunk(sourcePath, buffer, bytesRead);
+                totalBytesRead += bytesRead;
+                printPercentageAndWait(totalBytesRead, file.length());
+            }
+            fileServer.completeFileUpload(file.getName());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println("\nFile upload completed");
     }
 
     private static String[] getServerLocation() throws Exception {

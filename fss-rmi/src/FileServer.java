@@ -1,11 +1,14 @@
 import java.io.File;
+import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
 public interface FileServer extends Remote {
-
-    public File download(String path) throws RemoteException;
-    public void upload(File file, String path) throws RemoteException;
+    byte[] getFileChunk(String path, long position, int chunkSize) throws RemoteException;
+    long getFileSize(String path) throws RemoteException;
+    void startFileUpload(String path, long fileSize) throws RemoteException;
+    void uploadFileChunk(String path, byte[] chunk, int length) throws RemoteException;
+    void completeFileUpload(String path) throws RemoteException;
     public boolean deleteFile(String path) throws RemoteException;
     public String[] listContents(String path) throws RemoteException;
     public boolean createDirectory(String path) throws RemoteException;
