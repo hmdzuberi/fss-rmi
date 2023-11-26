@@ -127,11 +127,11 @@ public class Client {
             }
             byte[] buffer = new byte[chunkSize];
             int bytesRead;
-            int totalBytesRead = isResume ? (int) fileSizeOnServer : 0;
+            int position = isResume ? (int) fileSizeOnServer : 0;
             while ((bytesRead = inputStream.read(buffer)) != -1) {
                 fileServer.uploadFileChunk(sourcePath, buffer, bytesRead);
-                totalBytesRead += bytesRead;
-                printPercentageAndWait(totalBytesRead, fileSize);
+                position += bytesRead;
+                printPercentageAndWait(position, fileSize);
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
