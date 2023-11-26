@@ -9,10 +9,10 @@ public interface FileServer extends Remote {
     void startFileUpload(String path, long fileSize) throws RemoteException;
     void uploadFileChunk(String path, byte[] chunk, int length) throws RemoteException;
     void completeFileUpload(String path) throws RemoteException;
-    public boolean deleteFile(String path) throws RemoteException;
-    public String[] listContents(String path) throws RemoteException;
-    public boolean createDirectory(String path) throws RemoteException;
-    public boolean deleteDirectory(String path) throws RemoteException;
-    public void shutdown() throws RemoteException;
+    boolean deleteFile(String path) throws RemoteException;
+    String[] listContents(String path) throws RemoteException;
+    boolean createDirectory(String path) throws RemoteException;
+    boolean deleteDirectory(String path) throws RemoteException;
+    void shutdown() throws RemoteException;
 
 }
