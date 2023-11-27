@@ -4,7 +4,6 @@ import java.rmi.server.UnicastRemoteObject;
 
 public class Server {
     public static final String CMD_START = "start";
-
     private static boolean shutdown = false;
 
     public static void main(String[] args) {
@@ -22,7 +21,8 @@ public class Server {
                 while (true) {
                     try {
                         Thread.sleep(2 * 1000);
-                    } catch (InterruptedException ignored) {}
+                    } catch (InterruptedException ignored) {
+                    }
                     if (shutdown) {
                         System.out.println("Shutting down Server");
                         registry.unbind(FileServer.FILE_SERVER_RMI);
@@ -34,7 +34,8 @@ public class Server {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Error initializing server: " + e.getMessage());
+                System.err.println("Error: " + e.getMessage());
+                System.exit(1);
             }
         }
     }
