@@ -1,4 +1,7 @@
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.rmi.RemoteException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -28,6 +31,9 @@ public class RemoteFileServer implements FileServer {
     @Override
     public long getFileSize(String path) throws RemoteException {
         File file = new File(path);
+        if (!file.isFile()) {
+            throw new RemoteException(FILE_NOT_EXIST_SERVER);
+        }
         return file.length();
     }
 
@@ -72,27 +78,30 @@ public class RemoteFileServer implements FileServer {
     }
 
     @Override
-    public boolean deleteFile(String path) {
-        File file = new File(path);
-        return file.delete();
-    }
-
-    @Override
-    public String[] listContents(String path) {
+    public String[] listContents(String path) throws RemoteException {
         File directory = new File(path);
+        if (!directory.exists()) {
+            throw new RemoteException(FileServer.DIRECTORY_NOT_EXIST_SERVER);
+        }
         return directory.list();
     }
 
     @Override
-    public boolean createDirectory(String path) {
+    public void createDirectory(String path) throws RemoteException {
         File directory = new File(path);
-        return directory.mkdir();
+        boolean success = directory.mkdir();
+        if (!success) {
+            throw new RemoteException(FileServer.DIRECTORY_NOT_CREATED_SERVER);
+        }
     }
 
     @Override
-    public boolean deleteDirectory(String path) {
+    public void deleteFileOrDirectory(String path) throws RemoteException {
         File directory = new File(path);
-        return directory.delete();
+        boolean success = directory.delete();
+        if (!success) {
+            throw new RemoteException(FileServer.FILE_DIRECTORY_NOT_DELETED_SERVER);
+        }
     }
 
     @Override

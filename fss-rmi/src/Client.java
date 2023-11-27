@@ -1,4 +1,7 @@
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -7,7 +10,6 @@ import java.util.Objects;
 
 public class Client {
 
-    private static final String SERVER_KEY = "PA1_SERVER";
     public static final String CMD_UPLOAD = "upload";
     public static final String CMD_DOWNLOAD = "download";
     public static final String CMD_SHUTDOWN = "shutdown";
@@ -15,7 +17,7 @@ public class Client {
     public static final String CMD_MKDIR = "mkdir";
     public static final String CMD_RMDIR = "rmdir";
     public static final String CMD_RM = "rm";
-
+    private static final String SERVER_KEY = "PA1_SERVER";
     private static FileServer fileServer;
 
     public static void main(String[] args) {
@@ -28,20 +30,20 @@ public class Client {
             int port = Integer.parseInt(serverLocation[1]);
 
             Registry registry = LocateRegistry.getRegistry(host, port);
-            fileServer = (FileServer) registry.lookup("file-server");
+            fileServer = (FileServer) registry.lookup(FileServer.FILE_SERVER_RMI);
 
             switch (command) {
                 case CMD_UPLOAD -> uploadFile(commandArgs[0], commandArgs[1]);
                 case CMD_DOWNLOAD -> downloadFile(commandArgs[0], commandArgs[1]);
-                case CMD_RM -> deleteFile(commandArgs[0]);
+                case CMD_RM, CMD_RMDIR -> deleteFileOrDirectory(commandArgs[0]);
                 case CMD_DIR -> listContents(commandArgs[0]);
                 case CMD_MKDIR -> createDirectory(commandArgs[0]);
-                case CMD_RMDIR -> deleteDirectory(commandArgs[0]);
                 case CMD_SHUTDOWN -> shutdownServer();
-                default -> throw new IllegalStateException("Unexpected value: " + command);
+                default -> throw new IllegalStateException("Unexpected operation: " + command);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.printf("Error while performing %s operation: %s", command, e.getMessage());
+            System.exit(1);
         }
 
     }
@@ -50,28 +52,41 @@ public class Client {
         fileServer.shutdown();
     }
 
-    private static void deleteDirectory(String path) throws RemoteException {
-        boolean success = fileServer.deleteDirectory(path);
-        if (success) {
-            System.out.println("Directory deleted");
-        } else {
-            System.err.println("Directory could not be deleted");
+    private static void deleteFileOrDirectory(String path) throws RemoteException {
+        try {
+            fileServer.deleteFileOrDirectory(path);
+        } catch (RemoteException e) {
+            if (e.getCause().getMessage().equals(FileServer.FILE_DIRECTORY_NOT_DELETED_SERVER)) {
+                System.err.println(FileServer.FILE_DIRECTORY_NOT_DELETED_SERVER);
+                System.exit(1);
+            } else throw e;
         }
-
+        System.out.println("File/Directory deleted");
     }
 
     private static void createDirectory(String path) throws RemoteException {
-        boolean success = fileServer.createDirectory(path);
-        if (success) {
-            System.out.println("Directory created");
-        } else {
-            System.err.println("Directory could not be created");
+        try {
+            fileServer.createDirectory(path);
+        } catch (RemoteException e) {
+            if (e.getCause().getMessage().equals(FileServer.DIRECTORY_NOT_CREATED_SERVER)) {
+                System.err.println(FileServer.DIRECTORY_NOT_CREATED_SERVER);
+                System.exit(1);
+            } else throw e;
         }
+        System.out.println("Directory created");
     }
 
     private static void listContents(String path) throws RemoteException {
-        String[] contents = fileServer.listContents(path);
-        if (contents != null) {
+        String[] contents = new String[0];
+        try {
+            contents = fileServer.listContents(path);
+        } catch (RemoteException e) {
+            if (e.getCause().getMessage().equals(FileServer.DIRECTORY_NOT_EXIST_SERVER)) {
+                System.err.println(FileServer.DIRECTORY_NOT_EXIST_SERVER);
+                System.exit(1);
+            } else throw e;
+        }
+        if (contents.length != 0) {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < contents.length; i++) {
                 sb.append(String.format("%d. %s\n", i + 1, contents[i]));
@@ -80,21 +95,22 @@ public class Client {
         }
     }
 
-    private static void deleteFile(String path) throws RemoteException {
-        boolean success = fileServer.deleteFile(path);
-        if (success) {
-            System.out.println("File deleted");
-        } else {
-            System.err.println("File could not be deleted");
+    private static void downloadFile(String sourcePath, String destinationPath) throws IOException {
+        long fileSize = 0;
+        try {
+            fileSize = fileServer.getFileSize(sourcePath);
+        } catch (RemoteException e) {
+            if (e.getCause().getMessage().equals(FileServer.FILE_NOT_EXIST_SERVER)) {
+                System.err.println(FileServer.FILE_NOT_EXIST_SERVER);
+                System.exit(1);
+            } else throw e;
         }
-
-    }
-
-    private static void downloadFile(String sourcePath, String destinationPath) throws RemoteException {
         File file = new File(destinationPath);
-        long fileSize = fileServer.getFileSize(sourcePath);
         long fileSizeOnClient = file.length();
         boolean isResume = fileSizeOnClient != 0 && fileSizeOnClient < fileSize;
+        if (isResume) {
+            System.out.println("Resuming Download");
+        }
         int chunkSize = getChunkSize(fileSize);
         try (FileOutputStream outputStream = isResume ? new FileOutputStream(file, true) : new FileOutputStream(file)) {
             long position = isResume ? fileSizeOnClient : 0;
@@ -104,21 +120,29 @@ public class Client {
                 position += chunk.length;
                 printPercentageAndWait(position, fileSize);
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
         System.out.println("\nFile download completed");
     }
 
-    private static void uploadFile(String sourcePath, String destinationPath) throws RemoteException {
+    private static void uploadFile(String sourcePath, String destinationPath) throws IOException {
         File file = new File(sourcePath);
         if (!file.exists()) {
-            System.err.println("File/Directory doesn't exist");
-            return;
+            System.err.println("File/Directory doesn't exist on Client");
+            System.exit(1);
         }
         long fileSize = file.length();
-        long fileSizeOnServer = fileServer.getFileSize(destinationPath);
+        long fileSizeOnServer = 0;
+        try {
+            fileSizeOnServer = fileServer.getFileSize(destinationPath);
+        } catch (RemoteException e) {
+            if (!e.getCause().getMessage().equals(FileServer.FILE_NOT_EXIST_SERVER)) {
+                throw e;
+            } // else ignore
+        }
         boolean isResume = fileSizeOnServer != 0 && fileSizeOnServer < fileSize;
+        if (isResume) {
+            System.out.println("Resuming Upload");
+        }
         fileServer.startFileUpload(destinationPath, fileSize, isResume);
         int chunkSize = getChunkSize(fileSize);
         try (FileInputStream inputStream = new FileInputStream(file)) {
@@ -133,8 +157,6 @@ public class Client {
                 position += bytesRead;
                 printPercentageAndWait(position, fileSize);
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         } finally {
             fileServer.completeFileUpload(destinationPath);
         }

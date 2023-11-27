@@ -1,3 +1,5 @@
+import java.io.File;
+import java.io.FileInputStream;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -19,7 +21,7 @@ public class Server {
                 Registry registry = LocateRegistry.createRegistry(serverPort);
                 FileServer fileServer = new RemoteFileServer();
                 FileServer stub = (FileServer) UnicastRemoteObject.exportObject(fileServer, 0);
-                registry.rebind("file-server", stub);
+                registry.rebind(FileServer.FILE_SERVER_RMI, stub);
 
                 while (true) {
                     try {
@@ -27,7 +29,7 @@ public class Server {
                     } catch (InterruptedException ignored) {}
                     if (shutdown) {
                         System.out.println("Shutting down Server");
-                        registry.unbind("file-server");
+                        registry.unbind(FileServer.FILE_SERVER_RMI);
                         boolean hasShutdown = false;
                         while (!hasShutdown) {
                             hasShutdown = UnicastRemoteObject.unexportObject(fileServer, false);
