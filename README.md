@@ -2,18 +2,18 @@
 ## File Sharing System (FSS) using only Java sockets
 
 ### Set up the File Server
-Navigate to the folder where `pa1.jar` is located and run these commands:
+Navigate to the folder where `pa2.jar` is located and run these commands:
 ```console
 mkdir -p server
 cd server
-java -cp ..\pa1.jar server start <port>
+java -cp ..\pa2.jar Server start <port>
 ```
 The `server` folder will be the base folder for the File Server.
 
 The argument `<port>` indicates server port.
 
 ### Set up a Client
-Navigate to the folder where `pa1.jar` is located and run these commands:
+Navigate to the folder where `pa2.jar` is located and run these commands:
 ```console
 set PA1_SERVER=<address>:<port>
 mkdir client
@@ -32,35 +32,35 @@ The file path for all the commands will use context root as the base directories
 
 #### Upload File
 ```console
-java -cp ..\pa1.jar client upload </path/filename/on/client> </path/filename/on/server>
+java -cp ..\pa2.jar Client upload </path/filename/on/client> </path/filename/on/server>
 ```
 
 #### Download File
 ```console
-java -cp ..\pa1.jar client download </path/filename/on/server> </path/filename/on/client>
+java -cp ..\pa2.jar Client download </path/filename/on/server> </path/filename/on/client>
 ```
 
 #### Delete File
 ```console
-java -cp ..\pa1.jar client rm </path/filename/on/server>
+java -cp ..\pa2.jar Client rm </path/filename/on/server>
 ```
 
 #### Create Directory
 ```console
-java -cp ..\pa1.jar client mkdir </path/on/server>
+java -cp ..\pa2.jar Client mkdir </path/on/server>
 ```
 
 #### Delete Directory
 ```console
-java -cp ..\pa1.jar client rmdir </path/on/server>
+java -cp ..\pa2.jar Client rmdir </path/on/server>
 ```
 
 #### Get Contents in a Directory
 ```console
-java -cp ..\pa1.jar client dir </path/on/server>
+java -cp ..\pa2.jar Client dir </path/on/server>
 ```
 
 #### Shutdown File Server
 ```console
-java -cp ..\pa1.jar client shutdown
+java -cp ..\pa2.jar Client shutdown
 ```
