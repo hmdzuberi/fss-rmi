@@ -1,5 +1,5 @@
 # SWE-622 Programming Assignment 1
-## File Sharing System (FSS) using only Java sockets
+## File Sharing System (FSS) using Java RMI
 
 ### Set up the File Server
 Navigate to the folder where `pa2.jar` is located and run these commands:
