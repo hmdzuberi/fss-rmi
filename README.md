@@ -1,4 +1,4 @@
-# SWE-622 Programming Assignment 1
+# SWE-622 Programming Assignment 2
 ## File Sharing System (FSS) using Java RMI
 
 ### Set up the File Server
